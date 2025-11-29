@@ -6,7 +6,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, 
   PieChart, Pie, Cell 
 } from 'recharts';
-import { TrendingUp, TrendingDown, Wallet, Calendar, Filter, AlertTriangle, CheckCircle } from 'lucide-react';
+import { TrendingUp, TrendingDown, Wallet, Calendar, Filter, AlertTriangle, CheckCircle, BarChart2 } from 'lucide-react';
 import { TransactionForm } from './TransactionForm';
 
 interface DashboardProps {
@@ -97,6 +97,48 @@ export const Dashboard: React.FC<DashboardProps> = ({ transactions, onSave, cate
 
     return Object.values(data);
   }, [transactions, selectedYear]);
+
+  // Projection Data Logic
+  const projectionData = useMemo(() => {
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    const currentMonth = today.getMonth();
+
+    return monthlyTrendData.map((data, index) => {
+      // If we are looking at a past year, there is no projection, just actuals.
+      if (selectedYear < currentYear) {
+         return {
+          name: data.name,
+          actualIncome: data.income,
+          actualExpense: data.expense,
+          projectedIncome: 0,
+          projectedExpense: 0
+        };
+      }
+      
+      // If we are looking at future year, it is all projection
+      if (selectedYear > currentYear) {
+         return {
+          name: data.name,
+          actualIncome: 0,
+          actualExpense: 0,
+          projectedIncome: averages.income,
+          projectedExpense: averages.expense
+        };
+      }
+
+      // Current year: split by month
+      const isFuture = index > currentMonth;
+      
+      return {
+        name: data.name,
+        actualIncome: isFuture ? 0 : data.income,
+        actualExpense: isFuture ? 0 : data.expense,
+        projectedIncome: isFuture ? averages.income : 0,
+        projectedExpense: isFuture ? averages.expense : 0
+      };
+    });
+  }, [monthlyTrendData, averages, selectedYear]);
 
   const categoryData = useMemo(() => {
     const data: Record<string, number> = {};
@@ -327,6 +369,43 @@ export const Dashboard: React.FC<DashboardProps> = ({ transactions, onSave, cate
               </div>
             )}
           </div>
+        </div>
+      </div>
+
+       {/* Projection Chart */}
+       <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-lg font-bold flex items-center gap-2">
+            <BarChart2 size={20} className="text-purple-500" />
+            {t('yearlyProjection')} ({selectedYear})
+          </h3>
+        </div>
+        <div className="h-80">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={projectionData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.1} vertical={false} />
+              <XAxis dataKey="name" stroke="#9ca3af" fontSize={12} tickLine={false} axisLine={false} />
+              <YAxis stroke="#9ca3af" fontSize={12} tickLine={false} axisLine={false} />
+              <Tooltip 
+                contentStyle={{ 
+                  backgroundColor: 'rgba(255, 255, 255, 0.95)', 
+                  color: '#1f2937', 
+                  borderRadius: '8px', 
+                  border: '1px solid #e5e7eb',
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                }}
+                itemStyle={{ color: '#1f2937' }}
+                cursor={{ fill: 'rgba(0,0,0,0.05)' }}
+              />
+              <Legend wrapperStyle={{ paddingTop: '20px' }} />
+              
+              <Bar dataKey="actualIncome" stackId="income" fill="#10b981" name={t('income')} radius={[4, 4, 0, 0]} barSize={20} />
+              <Bar dataKey="projectedIncome" stackId="income" fill="#6ee7b7" name={t('projectedIncome')} radius={[4, 4, 0, 0]} barSize={20} />
+              
+              <Bar dataKey="actualExpense" stackId="expense" fill="#ef4444" name={t('expense')} radius={[4, 4, 0, 0]} barSize={20} />
+              <Bar dataKey="projectedExpense" stackId="expense" fill="#fca5a5" name={t('projectedExpense')} radius={[4, 4, 0, 0]} barSize={20} />
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       </div>
     </div>

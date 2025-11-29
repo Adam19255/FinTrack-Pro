@@ -28,6 +28,7 @@ export const TRANSLATIONS: Record<string, string> = {
   edit: 'ערוך',
   dayOfMonth: 'יום בחודש',
   active: 'פעיל',
+  inactive: 'לא פעיל',
   generateReport: 'צור דוח',
   exportData: 'ייצוא נתונים',
   loading: 'טוען...',
@@ -74,6 +75,16 @@ export const TRANSLATIONS: Record<string, string> = {
   overdraft: 'חריגה / מינוס',
   positiveBalance: 'יתרה חיובית',
   budgetStatus: 'סטטוס',
+  actionSuccess: 'הפעולה בוצעה בהצלחה',
+  actionError: 'שגיאה בביצוע הפעולה',
+  dataCleared: 'כל הנתונים נמחקו בהצלחה',
+  confirmDeleteTitle: 'אישור מחיקה',
+  showAll: 'הצג הכל',
+  currentMonth: 'חודש נוכחי',
+  projectedIncome: 'הכנסה צפויה',
+  projectedExpense: 'הוצאה צפויה',
+  actual: 'בפועל',
+  projected: 'צפי',
 };
 
 export const DEFAULT_CATEGORIES = {

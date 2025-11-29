@@ -14,13 +14,17 @@ import {
   processRecurringTransactions, clearAllData
 } from './services/storageService';
 import { TRANSLATIONS, DEFAULT_CATEGORIES } from './constants';
+import { ToastProvider, useToast } from './context/ToastContext';
 
-const App: React.FC = () => {
+// Create a wrapper component to use the toast hook
+const AppContent: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [recurring, setRecurring] = useState<RecurringConfig[]>([]);
   const [categories, setCategories] = useState<CategoryData>({ income: [], expense: [] });
   const [theme, setTheme] = useState<Theme>('light');
   const [loading, setLoading] = useState(true);
+  const { showToast } = useToast();
+  const t = (key: string) => TRANSLATIONS[key];
 
   // Initialization
   useEffect(() => {
@@ -30,7 +34,6 @@ const App: React.FC = () => {
         const loadedRecurring = await getRecurringConfigs();
         const loadedCategories = await getCategories();
         
-        // Process recurring items
         const { updatedTransactions, updatedRecurring, addedCount } = processRecurringTransactions(
           loadedTransactions,
           loadedRecurring
@@ -46,7 +49,6 @@ const App: React.FC = () => {
         setCategories(loadedCategories);
       } catch (error) {
         console.error("Failed to load data", error);
-        // Fallback to default if load fails
         setCategories({
           income: [...DEFAULT_CATEGORIES.INCOME],
           expense: [...DEFAULT_CATEGORIES.EXPENSE]
@@ -58,14 +60,12 @@ const App: React.FC = () => {
 
     loadData();
 
-    // Theme init
     if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
       setTheme('dark');
       document.documentElement.classList.add('dark');
     }
   }, []);
 
-  // Theme toggle
   const toggleTheme = () => {
     const newTheme = theme === 'light' ? 'dark' : 'light';
     setTheme(newTheme);
@@ -76,7 +76,6 @@ const App: React.FC = () => {
     }
   };
 
-  // Handlers
   const handleSaveTransaction = async (tx: Transaction) => {
     const newTransactions = transactions.some(t => t.id === tx.id)
       ? transactions.map(t => t.id === tx.id ? tx : t)
@@ -84,12 +83,14 @@ const App: React.FC = () => {
     
     setTransactions(newTransactions);
     await saveTransactions(newTransactions);
+    showToast(t('actionSuccess'), 'success');
   };
 
   const handleDeleteTransaction = async (id: string) => {
     const newTransactions = transactions.filter(t => t.id !== id);
     setTransactions(newTransactions);
     await saveTransactions(newTransactions);
+    showToast(t('actionSuccess'), 'success');
   };
 
   const handleSaveRecurring = async (conf: RecurringConfig) => {
@@ -99,31 +100,33 @@ const App: React.FC = () => {
     
     setRecurring(newRecurring);
     await saveRecurringConfigs(newRecurring);
+    showToast(t('actionSuccess'), 'success');
   };
 
   const handleDeleteRecurring = async (id: string) => {
     const newRecurring = recurring.filter(r => r.id !== id);
     setRecurring(newRecurring);
     await saveRecurringConfigs(newRecurring);
+    showToast(t('actionSuccess'), 'success');
   };
 
   const handleUpdateCategories = async (newCategories: CategoryData) => {
     setCategories(newCategories);
     await saveCategories(newCategories);
+    showToast(t('actionSuccess'), 'success');
   };
 
   const handleClearAll = async () => {
     await clearAllData();
     setTransactions([]);
     setRecurring([]);
-    // Optionally reset categories to default, or keep them. 
-    // Here we reset to default for a "factory reset" feel
     const defaults = {
         income: [...DEFAULT_CATEGORIES.INCOME],
         expense: [...DEFAULT_CATEGORIES.EXPENSE]
     };
     setCategories(defaults);
     await saveCategories(defaults);
+    showToast(t('dataCleared'), 'success');
   };
 
   if (loading) {
@@ -173,6 +176,14 @@ const App: React.FC = () => {
         </Routes>
       </Layout>
     </Router>
+  );
+};
+
+const App: React.FC = () => {
+  return (
+    <ToastProvider>
+      <AppContent />
+    </ToastProvider>
   );
 };
 

@@ -225,10 +225,10 @@ export const RecurringForm: React.FC<Props> = ({ onSave, onCancel, initialData, 
                 <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.active ? 'translate-x-1' : 'translate-x-6'}`} />
             </button>
             <span 
-              className="text-sm font-medium cursor-pointer text-gray-600 dark:text-gray-400"
+              className={`text-sm font-medium cursor-pointer ${formData.active ? 'text-blue-600 font-bold' : 'text-gray-500'}`}
               onClick={() => setFormData({...formData, active: !formData.active})}
             >
-              {t('active')}
+              {formData.active ? t('active') : t('inactive')}
             </span>
         </div>
 

@@ -5,6 +5,7 @@ import { Trash2, Edit2, Search, Download, Trash, XCircle, ArrowUp, ArrowDown } f
 import { exportToExcel, exportToPDF } from '../services/exportService';
 import { TransactionForm } from './TransactionForm';
 import { parseToDate } from '../utils/dateUtils';
+import { ConfirmModal } from './ConfirmModal';
 
 interface Props {
   transactions: Transaction[];
@@ -21,10 +22,15 @@ export const TransactionList: React.FC<Props> = ({ transactions, onSave, onDelet
   const t = (key: string) => TRANSLATIONS[key];
   const [searchTerm, setSearchTerm] = useState('');
   const [editingTransaction, setEditingTransaction] = useState<Transaction | undefined>(undefined);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   
-  // Advanced Filters
+  // Advanced Filters - Default to Current Month for performance
+  const now = new Date();
+  const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+
   const [filterType, setFilterType] = useState<TransactionType | 'ALL'>('ALL');
-  const [dateRange, setDateRange] = useState({ start: '', end: '' });
+  const [dateRange, setDateRange] = useState({ start: firstDay, end: lastDay });
   const [amountRange, setAmountRange] = useState({ min: '', max: '' });
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
 
@@ -48,12 +54,6 @@ export const TransactionList: React.FC<Props> = ({ transactions, onSave, onDelet
     setEditingTransaction(undefined);
   };
 
-  const handleClearAll = () => {
-    if (window.confirm(t('clearAllConfirm'))) {
-      onClearAll();
-    }
-  };
-
   const handleSort = (key: SortKey) => {
     setSortConfig(current => ({
       key,
@@ -69,6 +69,10 @@ export const TransactionList: React.FC<Props> = ({ transactions, onSave, onDelet
     setSearchTerm('');
     setSortConfig({ key: 'date', direction: 'desc' });
   };
+  
+  const showAll = () => {
+    setDateRange({ start: '', end: '' });
+  };
 
   const allCategories = [...categories.income, ...categories.expense];
 
@@ -81,6 +85,7 @@ export const TransactionList: React.FC<Props> = ({ transactions, onSave, onDelet
       const search = searchTerm.toLowerCase();
       if (searchTerm && !tr.description.toLowerCase().includes(search) && !tr.category.toLowerCase().includes(search)) return false;
 
+      // Date Filtering
       if (dateRange.start && parseToDate(tr.date).getTime() < new Date(dateRange.start).getTime()) return false;
       if (dateRange.end && parseToDate(tr.date).getTime() > new Date(dateRange.end).getTime()) return false;
 
@@ -127,13 +132,21 @@ export const TransactionList: React.FC<Props> = ({ transactions, onSave, onDelet
           </button>
           <button 
             type="button"
-            onClick={handleClearAll} 
+            onClick={() => setIsConfirmOpen(true)} 
             className="flex items-center gap-2 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors shadow-sm text-sm"
           >
             <Trash size={16} /> {t('clearAll')}
           </button>
         </div>
       </div>
+
+      <ConfirmModal 
+        isOpen={isConfirmOpen}
+        onClose={() => setIsConfirmOpen(false)}
+        onConfirm={onClearAll}
+        title={t('confirmDeleteTitle')}
+        message={t('clearAllConfirm')}
+      />
 
       {/* Inline Form for Adding/Editing */}
       <TransactionForm 
@@ -185,49 +198,80 @@ export const TransactionList: React.FC<Props> = ({ transactions, onSave, onDelet
 
           {/* Advanced Filter Inputs */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3 pt-2">
-            <input 
-              type="date" 
-              placeholder={t('startDate')}
-              value={dateRange.start}
-              onChange={e => setDateRange({ ...dateRange, start: e.target.value })}
-              className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm"
-            />
-            <input 
-              type="date" 
-              placeholder={t('endDate')}
-              value={dateRange.end}
-              onChange={e => setDateRange({ ...dateRange, end: e.target.value })}
-              className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm"
-            />
-            <input 
-              type="number" 
-              placeholder={t('minAmount')}
-              value={amountRange.min}
-              onChange={e => setAmountRange({ ...amountRange, min: e.target.value })}
-              className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm"
-            />
-            <input 
-              type="number" 
-              placeholder={t('maxAmount')}
-              value={amountRange.max}
-              onChange={e => setAmountRange({ ...amountRange, max: e.target.value })}
-              className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm"
-            />
-            <select
-              value={selectedCategory}
-              onChange={e => setSelectedCategory(e.target.value)}
-              className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm"
-            >
-              <option value="ALL">{t('allCategories')}</option>
-              {allCategories.sort().map(cat => (
-                <option key={cat} value={cat}>{cat}</option>
-              ))}
-            </select>
+            <div className="flex flex-col">
+               <label className="text-xs text-gray-400 mb-1">{t('startDate')}</label>
+               <input 
+                  type="date" 
+                  value={dateRange.start}
+                  onChange={e => setDateRange({ ...dateRange, start: e.target.value })}
+                  className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm"
+                />
+            </div>
+            <div className="flex flex-col">
+              <label className="text-xs text-gray-400 mb-1">{t('endDate')}</label>
+              <input 
+                type="date" 
+                value={dateRange.end}
+                onChange={e => setDateRange({ ...dateRange, end: e.target.value })}
+                className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm"
+              />
+            </div>
+            
+            <div className="flex flex-col">
+              <label className="text-xs text-gray-400 mb-1">{t('minAmount')}</label>
+              <input 
+                type="number" 
+                placeholder="0"
+                value={amountRange.min}
+                onChange={e => setAmountRange({ ...amountRange, min: e.target.value })}
+                className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm"
+              />
+            </div>
+            <div className="flex flex-col">
+              <label className="text-xs text-gray-400 mb-1">{t('maxAmount')}</label>
+              <input 
+                type="number" 
+                placeholder="∞"
+                value={amountRange.max}
+                onChange={e => setAmountRange({ ...amountRange, max: e.target.value })}
+                className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm"
+              />
+            </div>
+
+            <div className="flex flex-col">
+              <label className="text-xs text-gray-400 mb-1">{t('category')}</label>
+              <select
+                value={selectedCategory}
+                onChange={e => setSelectedCategory(e.target.value)}
+                className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm"
+              >
+                <option value="ALL">{t('allCategories')}</option>
+                {allCategories.sort().map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+            </div>
           </div>
           
-          <button onClick={resetFilters} className="text-xs text-blue-500 hover:text-blue-600 flex items-center gap-1">
-            <XCircle size={12} /> {t('resetFilters')}
-          </button>
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={resetFilters} 
+              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+            >
+              <XCircle size={16} /> {t('resetFilters')}
+            </button>
+            {(dateRange.start || dateRange.end) && (
+               <button 
+               onClick={showAll} 
+               className="px-4 py-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg text-sm font-medium transition-colors"
+             >
+               {t('showAll')}
+             </button>
+            )}
+            <span className="text-xs text-gray-400 flex-1 text-left rtl:text-right px-2">
+              {filteredTransactions.length} {t('transactions')}
+            </span>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
