@@ -1,0 +1,5 @@
+{
+  "name": "FinTrack Pro",
+  "description": "A comprehensive local-first financial tracking application with bilingual support (Hebrew/English), recurring transaction management, AI-powered insights, and data visualization.",
+  "requestFramePermissions": []
+}
