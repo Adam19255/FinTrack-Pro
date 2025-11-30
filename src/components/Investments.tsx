@@ -6,7 +6,7 @@ import { fetchStockPrice, fetchExchangeRate, fetchStockCandles } from '../servic
 import { Plus, TrendingUp, ChevronDown, ChevronUp, History, Edit2, Wallet, RefreshCw, Trash2, Settings, Key, LineChart as ChartIcon, Landmark } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { normalizeToISO, isoToDDMMYYYY, parseToDate, formatDateToDDMMYYYY } from '../utils/dateUtils';
+import { isoToDDMMYYYY, formatDateToDDMMYYYY, parseToDate } from '../utils/dateUtils';
 
 interface Props {
   investments: InvestmentTransaction[];
@@ -76,14 +76,6 @@ export const Investments: React.FC<Props> = ({ investments, transactions, onSave
       if (rate) setExchangeRate(rate);
     };
     loadRates();
-  }, []);
-
-  // Call refresh when navigating to this tab (component mount)
-  useEffect(() => {
-    if (apiKey) {
-      refreshPrices();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Update chart when time range or investments change
@@ -329,7 +321,21 @@ export const Investments: React.FC<Props> = ({ investments, transactions, onSave
 
 
   const handleEditTransaction = (tx: InvestmentTransaction) => {
-    setFormData({ ...tx, date: normalizeToISO(tx.date) });
+    setFormData(tx);
+    setIsFormOpen(true);
+  };
+
+  const handleQuickBuy = (asset: GroupedAsset) => {
+    setFormData({
+      type: 'BUY',
+      assetType: asset.assetType,
+      symbol: asset.symbol,
+      name: asset.name,
+      currency: 'USD', // Default to USD or could attempt to infer last currency
+      date: isoToDDMMYYYY(new Date().toISOString().split('T')[0]),
+      quantity: 0,
+      pricePerUnit: 0
+    });
     setIsFormOpen(true);
   };
 
@@ -502,14 +508,23 @@ export const Investments: React.FC<Props> = ({ investments, transactions, onSave
                      </div>
                   </div>
                   
-                  {asset.quantity > 0 && (
-                     <button 
-                     onClick={() => setSellModalSymbol(asset.symbol)}
-                     className="px-3 py-1.5 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-lg text-sm font-medium hover:bg-red-200 transition-colors"
-                  >
-                     {t('sell')}
-                  </button>
-                  )}
+                  <div className="flex items-center gap-2">
+                    <button 
+                        onClick={() => handleQuickBuy(asset)}
+                        className="px-3 py-1.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-lg text-sm font-medium hover:bg-blue-200 transition-colors"
+                        title={t('buy')}
+                    >
+                        <Plus size={16} />
+                    </button>
+                    {asset.quantity > 0 && (
+                        <button 
+                        onClick={() => setSellModalSymbol(asset.symbol)}
+                        className="px-3 py-1.5 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-lg text-sm font-medium hover:bg-red-200 transition-colors"
+                    >
+                        {t('sell')}
+                    </button>
+                    )}
+                  </div>
                </div>
 
                {/* History / Transactions Dropdown */}
@@ -604,14 +619,14 @@ export const Investments: React.FC<Props> = ({ investments, transactions, onSave
                     <span className="text-xs text-gray-500 font-medium">{t('displayCurrency')}</span>
                     <div className="flex bg-gray-100 dark:bg-gray-700 rounded p-0.5">
                         <button 
-                          onClick={() => setDisplayCurrency('USD')}
-                          className={`px-2 py-0.5 text-xs rounded font-bold transition-all ${displayCurrency === 'USD' ? 'bg-white dark:bg-gray-600 shadow text-blue-600' : 'text-gray-500'}`}
+                            onClick={() => setDisplayCurrency('USD')}
+                            className={`px-2 py-0.5 text-xs rounded font-bold transition-all ${displayCurrency === 'USD' ? 'bg-white dark:bg-gray-600 shadow text-blue-600' : 'text-gray-500'}`}
                         >
                             $
                         </button>
                         <button 
-                          onClick={() => setDisplayCurrency('ILS')}
-                          className={`px-2 py-0.5 text-xs rounded font-bold transition-all ${displayCurrency === 'ILS' ? 'bg-white dark:bg-gray-600 shadow text-blue-600' : 'text-gray-500'}`}
+                            onClick={() => setDisplayCurrency('ILS')}
+                            className={`px-2 py-0.5 text-xs rounded font-bold transition-all ${displayCurrency === 'ILS' ? 'bg-white dark:bg-gray-600 shadow text-blue-600' : 'text-gray-500'}`}
                         >
                             ₪
                         </button>
@@ -636,11 +651,23 @@ export const Investments: React.FC<Props> = ({ investments, transactions, onSave
                 </button>
 
                 <button 
-                    onClick={() => setIsFormOpen(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium shadow-sm text-sm"
+                  onClick={() => {
+                    setFormData({
+                      type: 'BUY',
+                      assetType: AssetType.STOCK,
+                      currency: 'USD',
+                      date: new Date().toISOString().split('T')[0],
+                      symbol: '',
+                      name: '',
+                      quantity: 0,
+                      pricePerUnit: 0
+                    });
+                    setIsFormOpen(true);
+                  }}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium shadow-sm text-sm"
                 >
-                    <Plus size={18} />
-                    {t('addInvestment')}
+                  <Plus size={18} />
+                  {t('addInvestment')}
                 </button>
             </div>
         </div>
@@ -692,8 +719,8 @@ export const Investments: React.FC<Props> = ({ investments, transactions, onSave
                         {t('availableToInvest')}
                     </span>
                 </div>
-                <p className={`text-2xl font-bold ${budgetStats.available >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
-                    {budgetStats.available.toLocaleString()} ₪
+                <p className={`text-2xl font-bold ${budgetStats.available >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`} style={{direction: 'ltr', alignSelf: 'flex-start'}}>
+                    ₪ {budgetStats.available.toLocaleString()} 
                 </p>
             </div>
         </div>
@@ -712,7 +739,7 @@ export const Investments: React.FC<Props> = ({ investments, transactions, onSave
                         <select 
                             value={benchmarkSymbol} 
                             onChange={(e) => setBenchmarkSymbol(e.target.value)}
-                            className="bg-transparent text-sm font-bold outline-none"
+                            className="bg-transparent text-sm font-bold outline-none text-gray-700 dark:text-gray-200 [&>option]:bg-white [&>option]:text-gray-900 dark:[&>option]:bg-gray-800 dark:[&>option]:text-gray-200"
                         >
                             <option value="SPY">S&P 500 (SPY)</option>
                             <option value="QQQ">Nasdaq (QQQ)</option>
@@ -966,18 +993,18 @@ export const Investments: React.FC<Props> = ({ investments, transactions, onSave
                         <label className="block text-sm font-medium mb-1">{t('currency')}</label>
                         <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
                             <button
-                              type="button"
-                              onClick={() => setFormData({...formData, currency: 'USD'})}
-                              className={`flex-1 py-1 text-xs font-bold rounded ${formData.currency === 'USD' ? 'bg-white dark:bg-gray-600 shadow text-blue-600' : 'text-gray-500'}`}
+                                type="button"
+                                onClick={() => setFormData({...formData, currency: 'USD'})}
+                                className={`flex-1 py-1 text-xs font-bold rounded ${formData.currency === 'USD' ? 'bg-white shadow text-blue-600' : 'text-gray-500'}`}
                             >
-                              $ USD
+                                $ USD
                             </button>
                             <button
-                              type="button"
-                              onClick={() => setFormData({...formData, currency: 'ILS'})}
-                              className={`flex-1 py-1 text-xs font-bold rounded ${formData.currency === 'ILS' ? 'bg-white dark:bg-gray-600 shadow text-blue-600' : 'text-gray-500'}`}
+                                type="button"
+                                onClick={() => setFormData({...formData, currency: 'ILS'})}
+                                className={`flex-1 py-1 text-xs font-bold rounded ${formData.currency === 'ILS' ? 'bg-white shadow text-blue-600' : 'text-gray-500'}`}
                             >
-                              ₪ ILS
+                                ₪ ILS
                             </button>
                         </div>
                     </div>
@@ -994,7 +1021,19 @@ export const Investments: React.FC<Props> = ({ investments, transactions, onSave
                  </div>
 
                  <div className="flex justify-end gap-3 pt-2">
-                    <button type="button" onClick={() => setIsFormOpen(false)} className="px-4 py-2 text-gray-500">{t('cancel')}</button>
+                    <button type="button" onClick={() => {
+                      setIsFormOpen(false);
+                      setFormData({
+                        type: 'BUY',
+                        assetType: AssetType.STOCK,
+                        currency: 'USD',
+                        date: new Date().toISOString().split('T')[0],
+                        symbol: '',
+                        name: '',
+                        quantity: 0,
+                        pricePerUnit: 0
+                      });
+                    }} className="px-4 py-2 text-gray-500">{t('cancel')}</button>
                     <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg">{t('save')}</button>
                  </div>
                </form>
