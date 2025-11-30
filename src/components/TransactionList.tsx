@@ -27,7 +27,7 @@ export const TransactionList: React.FC<Props> = ({ transactions, onSave, onDelet
   // Advanced Filters - Default to Current Month for performance
   const now = new Date();
   const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1).toISOString().split('T')[0];
 
   const [filterType, setFilterType] = useState<TransactionType | 'ALL'>('ALL');
   const [dateRange, setDateRange] = useState({ start: firstDay, end: lastDay });
@@ -68,10 +68,6 @@ export const TransactionList: React.FC<Props> = ({ transactions, onSave, onDelet
     setSelectedCategory('ALL');
     setSearchTerm('');
     setSortConfig({ key: 'date', direction: 'desc' });
-  };
-  
-  const showAll = () => {
-    setDateRange({ start: '', end: '' });
   };
 
   const allCategories = [...categories.income, ...categories.expense];
@@ -260,14 +256,6 @@ export const TransactionList: React.FC<Props> = ({ transactions, onSave, onDelet
             >
               <XCircle size={16} /> {t('resetFilters')}
             </button>
-            {(dateRange.start || dateRange.end) && (
-               <button 
-               onClick={showAll} 
-               className="px-4 py-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg text-sm font-medium transition-colors"
-             >
-               {t('showAll')}
-             </button>
-            )}
             <span className="text-xs text-gray-400 flex-1 text-left rtl:text-right px-2">
               {filteredTransactions.length} {t('transactions')}
             </span>

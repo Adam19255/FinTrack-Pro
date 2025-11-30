@@ -61,6 +61,7 @@ export const RecurringSettings: React.FC<Props> = ({ recurring, onSave, onDelete
                   </span>
                   
                   {/* Quick Toggle Switch */}
+                  <div className="flex items-center gap-2">
                   <button 
                     onClick={() => handleToggleActive(item)}
                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${item.active ? 'bg-green-500' : 'bg-gray-200 dark:bg-gray-600'}`}
@@ -69,6 +70,10 @@ export const RecurringSettings: React.FC<Props> = ({ recurring, onSave, onDelete
                   >
                     <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${item.active ? 'translate-x-1' : 'translate-x-6'}`} />
                   </button>
+                  <span>
+                    {item.active ? t('active') : t('inactive')}
+                  </span>
+                  </div>
               </div>
               <h3 className="text-lg font-bold mb-1">{item.description || t('recurring')}</h3>
               <p className="text-sm text-gray-500 mb-4">{item.category}</p>
