@@ -3,7 +3,7 @@ import { InvestmentTransaction, AssetType, Transaction, TransactionType } from '
 import { TRANSLATIONS } from '../constants';
 import { generateId } from '../services/storageService';
 import { fetchStockPrice, fetchExchangeRate, fetchStockCandles } from '../services/financeService';
-import { Plus, TrendingUp, TrendingDown, DollarSign, ChevronDown, ChevronUp, History, Edit2, Wallet, RefreshCw, Trash2, Settings, Key, LineChart as ChartIcon, Landmark } from 'lucide-react';
+import { Plus, TrendingUp, ChevronDown, ChevronUp, History, Edit2, Wallet, RefreshCw, Trash2, Settings, Key, LineChart as ChartIcon, Landmark } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { normalizeToISO, isoToDDMMYYYY, parseToDate, formatDateToDDMMYYYY } from '../utils/dateUtils';
@@ -604,14 +604,14 @@ export const Investments: React.FC<Props> = ({ investments, transactions, onSave
                     <span className="text-xs text-gray-500 font-medium">{t('displayCurrency')}</span>
                     <div className="flex bg-gray-100 dark:bg-gray-700 rounded p-0.5">
                         <button 
-                            onClick={() => setDisplayCurrency('USD')}
-                            className={`px-2 py-0.5 text-xs rounded font-bold transition-all ${displayCurrency === 'USD' ? 'bg-white dark:bg-gray-600 shadow text-blue-600' : 'text-gray-500'}`}
+                          onClick={() => setDisplayCurrency('USD')}
+                          className={`px-2 py-0.5 text-xs rounded font-bold transition-all ${displayCurrency === 'USD' ? 'bg-white dark:bg-gray-600 shadow text-blue-600' : 'text-gray-500'}`}
                         >
                             $
                         </button>
                         <button 
-                            onClick={() => setDisplayCurrency('ILS')}
-                            className={`px-2 py-0.5 text-xs rounded font-bold transition-all ${displayCurrency === 'ILS' ? 'bg-white dark:bg-gray-600 shadow text-blue-600' : 'text-gray-500'}`}
+                          onClick={() => setDisplayCurrency('ILS')}
+                          className={`px-2 py-0.5 text-xs rounded font-bold transition-all ${displayCurrency === 'ILS' ? 'bg-white dark:bg-gray-600 shadow text-blue-600' : 'text-gray-500'}`}
                         >
                             ₪
                         </button>
@@ -966,18 +966,18 @@ export const Investments: React.FC<Props> = ({ investments, transactions, onSave
                         <label className="block text-sm font-medium mb-1">{t('currency')}</label>
                         <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
                             <button
-                                type="button"
-                                onClick={() => setFormData({...formData, currency: 'USD'})}
-                                className={`flex-1 py-1 text-xs font-bold rounded ${formData.currency === 'USD' ? 'bg-white shadow text-blue-600' : 'text-gray-500'}`}
+                              type="button"
+                              onClick={() => setFormData({...formData, currency: 'USD'})}
+                              className={`flex-1 py-1 text-xs font-bold rounded ${formData.currency === 'USD' ? 'bg-white dark:bg-gray-600 shadow text-blue-600' : 'text-gray-500'}`}
                             >
-                                $ USD
+                              $ USD
                             </button>
                             <button
-                                type="button"
-                                onClick={() => setFormData({...formData, currency: 'ILS'})}
-                                className={`flex-1 py-1 text-xs font-bold rounded ${formData.currency === 'ILS' ? 'bg-white shadow text-blue-600' : 'text-gray-500'}`}
+                              type="button"
+                              onClick={() => setFormData({...formData, currency: 'ILS'})}
+                              className={`flex-1 py-1 text-xs font-bold rounded ${formData.currency === 'ILS' ? 'bg-white dark:bg-gray-600 shadow text-blue-600' : 'text-gray-500'}`}
                             >
-                                ₪ ILS
+                              ₪ ILS
                             </button>
                         </div>
                     </div>
