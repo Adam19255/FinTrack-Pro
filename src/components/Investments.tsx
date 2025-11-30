@@ -3,7 +3,7 @@ import { InvestmentTransaction, AssetType, Transaction, TransactionType } from '
 import { TRANSLATIONS } from '../constants';
 import { generateId } from '../services/storageService';
 import { fetchStockPrice, fetchExchangeRate, fetchStockCandles } from '../services/financeService';
-import { Plus, TrendingUp, ChevronDown, ChevronUp, History, Edit2, Wallet, RefreshCw, Trash2, Settings, Key, LineChart as ChartIcon, Landmark } from 'lucide-react';
+import { Plus, TrendingUp, DollarSign, ChevronDown, ChevronUp, History, Edit2, Wallet, RefreshCw, Trash2, Settings, Key, LineChart as ChartIcon, Landmark, Activity, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { isoToDDMMYYYY, formatDateToDDMMYYYY, parseToDate } from '../utils/dateUtils';
@@ -22,7 +22,7 @@ interface GroupedAsset {
   assetType: AssetType;
   quantity: number;
   avgBuyPrice: number; // In USD
-  totalInvested: number; // In USD
+  totalInvested: number; // In USD (Cost Basis of current holdings)
   currentPrice?: number; // In USD
   transactions: InvestmentTransaction[];
 }
@@ -119,7 +119,7 @@ export const Investments: React.FC<Props> = ({ investments, transactions, onSave
       let resolution = 'D';
 
       switch (timeRange) {
-        case '1D': startTime = now - 86400; resolution = '60'; break; // Intraday usually requires premium or low res
+        case '1D': startTime = now - 86400; resolution = '60'; break;
         case '5D': startTime = now - (5 * 86400); resolution = '60'; break;
         case '1M': startTime = now - (30 * 86400); resolution = 'D'; break;
         case '6M': startTime = now - (180 * 86400); resolution = 'D'; break;
@@ -127,13 +127,11 @@ export const Investments: React.FC<Props> = ({ investments, transactions, onSave
         case '1Y': startTime = now - (365 * 86400); resolution = 'D'; break;
         case '3Y': startTime = now - (3 * 365 * 86400); resolution = 'D'; break;
         case '5Y': startTime = now - (5 * 365 * 86400); resolution = 'W'; break;
-        case 'ALL': startTime = now - (10 * 365 * 86400); resolution = 'W'; break; // Cap at 10 years
+        case 'ALL': startTime = now - (10 * 365 * 86400); resolution = 'W'; break; 
       }
 
-      // 1. Get Benchmark Data
       const benchmarkData = await fetchStockCandles(benchmarkSymbol, resolution, startTime, now, apiKey);
       
-      // 2. Get Data for all owned stocks
       const uniqueSymbols = Array.from(new Set(investments.filter(i => i.assetType === AssetType.STOCK).map(i => i.symbol)));
       const stockDataMap: Record<string, any> = {};
       
@@ -142,7 +140,6 @@ export const Investments: React.FC<Props> = ({ investments, transactions, onSave
         if (data) stockDataMap[sym] = data;
       }));
 
-      // 3. Reconstruct Portfolio History
       if (!benchmarkData || !benchmarkData.t) {
         setIsLoadingChart(false);
         return;
@@ -155,23 +152,17 @@ export const Investments: React.FC<Props> = ({ investments, transactions, onSave
         const date = new Date(ts * 1000);
         const dateStr = date.toISOString().split('T')[0];
         
-        // Calculate Portfolio Value at this timestamp
         let portfolioValue = 0;
         let totalInvested = 0;
 
         uniqueSymbols.forEach(sym => {
-          // Get price at this time
           const candles = stockDataMap[sym];
           let price = 0;
           if (candles) {
-             // Find closest candle index
-             // Since timestamps might not match exactly across stocks, we assume daily align
-             // Simplification: Use the price at the same index if available, or closest previous
              price = candles.c[index] || (index > 0 ? candles.c[index-1] : 0);
           }
 
-          // Calculate quantity held at this date
-              const txs = investments.filter(i => i.symbol === sym && parseToDate(i.date).getTime() <= date.getTime());
+          const txs = investments.filter(i => i.symbol === sym && parseToDate(i.date).getTime() <= date.getTime());
           const qty = txs.reduce((acc, curr) => curr.type === 'BUY' ? acc + curr.quantity : acc - curr.quantity, 0);
           
           if (qty > 0 && price > 0) {
@@ -179,20 +170,14 @@ export const Investments: React.FC<Props> = ({ investments, transactions, onSave
           }
         });
 
-        // Calculate Invested Capital at this date (Cash Flow)
-        // This is needed to calculate Return %
-          const historicTxs = investments.filter(i => parseToDate(i.date).getTime() <= date.getTime());
+        const historicTxs = investments.filter(i => parseToDate(i.date).getTime() <= date.getTime());
         historicTxs.forEach(tx => {
            const val = tx.quantity * tx.pricePerUnit * (tx.currency === 'ILS' ? (1/exchangeRate) : 1);
            if (tx.type === 'BUY') totalInvested += val;
            else totalInvested -= val;
         });
 
-        // Calculate Percentages
-        // Portfolio % Return = ((Current Value - Invested) / Invested) * 100
         const portfolioReturn = totalInvested > 0 ? ((portfolioValue - totalInvested) / totalInvested) * 100 : 0;
-        
-        // Benchmark % Return (normalized to start of chart or start of data)
         const benchmarkStartPrice = benchmarkData.c[0];
         const benchmarkReturn = ((benchmarkData.c[index] - benchmarkStartPrice) / benchmarkStartPrice) * 100;
 
@@ -214,7 +199,7 @@ export const Investments: React.FC<Props> = ({ investments, transactions, onSave
   };
 
   // Helper: Convert to Display Currency
-  const formatMoney = (amountInUSD: number) => {
+  const formatDisplay = (amountInUSD: number) => {
     if (displayCurrency === 'USD') {
       return `$${amountInUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     } else {
@@ -222,13 +207,23 @@ export const Investments: React.FC<Props> = ({ investments, transactions, onSave
     }
   };
 
-  // 1. Calculate Available Budget
+  const formatDual = (amountILS: number) => {
+      const amountUSD = amountILS / exchangeRate;
+      return (
+          <div className="flex flex-col items-start">
+              <span className="font-bold">₪ {amountILS.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">$ {amountUSD.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
+          </div>
+      );
+  };
+
+  // 1. Budget Stats (Calculated in ILS first as base)
   const budgetStats = useMemo(() => {
     const totalAllocatedILS = transactions
       .filter(t => t.type === TransactionType.EXPENSE && t.category === 'השקעה')
       .reduce((sum, t) => sum + t.amount, 0);
 
-    let totalInvestedILS = 0;
+    let totalInvestedILS = 0; // Net Cash Flow (In - Out)
     
     investments.forEach(inv => {
       const txTotal = inv.quantity * inv.pricePerUnit;
@@ -248,9 +243,11 @@ export const Investments: React.FC<Props> = ({ investments, transactions, onSave
     };
   }, [transactions, investments, exchangeRate]);
 
-  // 2. Grouping Logic (Portfolio)
-  const portfolio = useMemo(() => {
+  // 2. Grouping Logic & Aggregates (USD Base)
+  const { portfolioGroups, aggregates } = useMemo(() => {
     const groups: Record<string, GroupedAsset> = {};
+    let totalRealizedProfitUSD = 0;
+    let totalRealizedLossUSD = 0;
 
     const sortedInvestments = [...investments].sort((a, b) => parseToDate(a.date).getTime() - parseToDate(b.date).getTime());
 
@@ -286,20 +283,47 @@ export const Investments: React.FC<Props> = ({ investments, transactions, onSave
         
         group.totalInvested += newTxValueUSD;
       } else {
+        // SELL Logic
         const costBasisSoldUSD = tx.quantity * group.avgBuyPrice;
+        const saleValueUSD = tx.quantity * priceInUSD;
+        const realizedPL = saleValueUSD - costBasisSoldUSD;
+
+        if (realizedPL > 0) totalRealizedProfitUSD += realizedPL;
+        else totalRealizedLossUSD += realizedPL; // Adding negative number
+
         group.totalInvested -= costBasisSoldUSD;
         group.quantity -= tx.quantity;
       }
     });
 
-    // Attach current price if exists
+    // Attach current price
     Object.values(groups).forEach(g => {
         if (prices[g.symbol]) {
             g.currentPrice = prices[g.symbol];
         }
     });
 
-    return Object.values(groups); 
+    // Calculate Portfolio Wide Totals (Unrealized)
+    let totalCostBasisUSD = 0;
+    let totalMarketValueUSD = 0;
+
+    Object.values(groups).forEach(g => {
+        if(g.quantity > 0) {
+            totalCostBasisUSD += (g.quantity * g.avgBuyPrice);
+            const price = g.currentPrice || g.avgBuyPrice;
+            totalMarketValueUSD += (g.quantity * price);
+        }
+    });
+
+    return { 
+        portfolioGroups: Object.values(groups),
+        aggregates: {
+            totalRealizedProfitUSD,
+            totalRealizedLossUSD,
+            totalCostBasisUSD,
+            totalMarketValueUSD
+        }
+    }; 
   }, [investments, exchangeRate, prices]);
 
   // Group by Asset Type
@@ -311,13 +335,13 @@ export const Investments: React.FC<Props> = ({ investments, transactions, onSave
       [AssetType.OTHER]: []
     };
 
-    portfolio.forEach(asset => {
+    portfolioGroups.forEach(asset => {
       if (byType[asset.assetType]) {
         byType[asset.assetType].push(asset);
       }
     });
     return byType;
-  }, [portfolio]);
+  }, [portfolioGroups]);
 
 
   const handleEditTransaction = (tx: InvestmentTransaction) => {
@@ -331,7 +355,7 @@ export const Investments: React.FC<Props> = ({ investments, transactions, onSave
       assetType: asset.assetType,
       symbol: asset.symbol,
       name: asset.name,
-      currency: 'USD', // Default to USD or could attempt to infer last currency
+      currency: 'USD', 
       date: isoToDDMMYYYY(new Date().toISOString().split('T')[0]),
       quantity: 0,
       pricePerUnit: 0
@@ -396,7 +420,7 @@ export const Investments: React.FC<Props> = ({ investments, transactions, onSave
   const handleSellSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (sellModalSymbol && sellQuantity && sellPrice) {
-        const asset = portfolio.find(p => p.symbol === sellModalSymbol);
+        const asset = portfolioGroups.find(p => p.symbol === sellModalSymbol);
         
         onSave({
             id: generateId(),
@@ -450,8 +474,8 @@ export const Investments: React.FC<Props> = ({ investments, transactions, onSave
                     <span className="font-bold" style={{direction: 'ltr'}}>{groupReturn.toFixed(2)}%</span>
                 </div>
                 <div className="text-sm font-medium bg-gray-100 dark:bg-gray-700 px-3 py-1 rounded-lg">
-                    <span className="text-gray-500 dark:text-gray-400 mr-2">{t('marketValue')}:</span>
-                    <span className="text-blue-600 dark:text-blue-400 font-bold">{formatMoney(groupMarketValueUSD)}</span>
+                    <span className="text-gray-500 dark:text-gray-400 mr-2">{t('groupTotal')}:</span>
+                    <span className="text-blue-600 dark:text-blue-400 font-bold">{formatDisplay(groupMarketValueUSD)}</span>
                 </div>
             </div>
         </div>
@@ -484,23 +508,23 @@ export const Investments: React.FC<Props> = ({ investments, transactions, onSave
                      </div>
                      <div>
                         <p className="text-xs text-gray-500">{t('avgPrice')}</p>
-                        <p className="font-medium">{formatMoney(asset.avgBuyPrice)}</p>
+                        <p className="font-medium">{formatDisplay(asset.avgBuyPrice)}</p>
                      </div>
                      <div>
                         <p className="text-xs text-gray-500">{t('currentPrice')}</p>
                         <p className="font-medium">
-                            {asset.currentPrice ? formatMoney(asset.currentPrice) : '-'}
+                            {asset.currentPrice ? formatDisplay(asset.currentPrice) : '-'}
                         </p>
                      </div>
                      <div>
                         <p className="text-xs text-gray-500">{t('marketValue')}</p>
                         <p className="font-bold text-blue-600 dark:text-blue-400">
-                            {formatMoney(marketValueUSD)}
+                            {formatDisplay(marketValueUSD)}
                         </p>
                      </div>
                      <div className="flex flex-col items-end">
                         <p className={`text-sm font-bold ${totalReturn >= 0 ? 'text-green-600' : 'text-red-600'}`} style={{direction: 'ltr'}}>
-                            {totalReturn >= 0 ? '+' : ''}{formatMoney(totalReturn)}
+                            {totalReturn >= 0 ? '+' : ''}{formatDisplay(totalReturn)}
                         </p>
                         <p className={`text-xs ${returnPct >= 0 ? 'text-green-600' : 'text-red-600'}`} style={{direction: 'ltr'}}>
                             {returnPct.toFixed(2)}%
@@ -700,27 +724,74 @@ export const Investments: React.FC<Props> = ({ investments, transactions, onSave
                     <Wallet size={20} className="text-blue-500" />
                     <span className="text-sm font-medium">{t('allocatedBudget')}</span>
                 </div>
-                <p className="text-2xl font-bold">{budgetStats.allocated.toLocaleString()} ₪</p>
+                {formatDual(budgetStats.allocated)}
             </div>
             
             <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col justify-between">
                 <div className="flex items-center gap-2 text-gray-500 mb-2">
-                    <TrendingUp size={20} className="text-purple-500" />
-                    <span className="text-sm font-medium">{t('totalInvested')}</span>
+                    <RefreshCw size={20} className="text-purple-500" />
+                    <span className="text-sm font-medium">{t('netCashFlow')}</span>
                 </div>
-                <p className="text-2xl font-bold">{budgetStats.invested.toLocaleString()} ₪</p>
+                {formatDual(budgetStats.invested)}
             </div>
 
             <div className={`rounded-2xl p-6 shadow-sm border flex flex-col justify-between
                 ${budgetStats.available >= 0 ? 'bg-green-50 dark:bg-green-900/20 border-green-200' : 'bg-red-50 dark:bg-red-900/20 border-red-200'}
             `}>
                 <div className="flex items-center gap-2 mb-2">
+                    <DollarSign size={20} className={budgetStats.available >= 0 ? 'text-green-600' : 'text-red-600'} />
                     <span className={`text-sm font-medium ${budgetStats.available >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
                         {t('availableToInvest')}
                     </span>
                 </div>
-                <p className={`text-2xl font-bold ${budgetStats.available >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`} style={{direction: 'ltr', alignSelf: 'flex-start'}}>
-                    ₪ {budgetStats.available.toLocaleString()} 
+                {formatDual(budgetStats.available)}
+            </div>
+        </div>
+
+        {/* Detailed Portfolio Summary Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col justify-between">
+                <div className="flex items-center gap-2 text-gray-500 mb-4">
+                    <Activity size={20} className="text-blue-500" />
+                    <span className="text-sm font-medium">{t('investedVsWorth')}</span>
+                </div>
+                <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                        <span className="text-xs text-gray-400">{t('costBasis')}</span>
+                        <span className="font-bold">{formatDisplay(aggregates.totalCostBasisUSD)}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                        <span className="text-xs text-gray-400">{t('currentWorth')}</span>
+                        <span className="font-bold text-blue-600 dark:text-blue-400">{formatDisplay(aggregates.totalMarketValueUSD)}</span>
+                    </div>
+                    {aggregates.totalCostBasisUSD > 0 && (
+                        <div className="flex justify-between items-center pt-2 border-t dark:border-gray-700">
+                            <span className="text-xs text-gray-400">{t('unrealizedPL')}</span>
+                            <span className={`font-bold ${aggregates.totalMarketValueUSD >= aggregates.totalCostBasisUSD ? 'text-green-500' : 'text-red-500'}`} style={{direction:'ltr'}}>
+                                {((aggregates.totalMarketValueUSD - aggregates.totalCostBasisUSD) / aggregates.totalCostBasisUSD * 100).toFixed(2)}%
+                            </span>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col justify-between">
+                <div className="flex items-center gap-2 text-gray-500 mb-4">
+                    <ArrowUpRight size={20} className="text-green-500" />
+                    <span className="text-sm font-medium">{t('realizedProfit')}</span>
+                </div>
+                <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                    {formatDisplay(aggregates.totalRealizedProfitUSD)}
+                </p>
+            </div>
+
+            <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col justify-between">
+                <div className="flex items-center gap-2 text-gray-500 mb-4">
+                    <ArrowDownRight size={20} className="text-red-500" />
+                    <span className="text-sm font-medium">{t('realizedLoss')}</span>
+                </div>
+                <p className="text-2xl font-bold text-red-600 dark:text-red-400">
+                    {formatDisplay(aggregates.totalRealizedLossUSD)}
                 </p>
             </div>
         </div>
@@ -844,7 +915,19 @@ export const Investments: React.FC<Props> = ({ investments, transactions, onSave
                <h3 className="text-xl font-bold mb-4">{t('sell')} {sellModalSymbol}</h3>
                <form onSubmit={handleSellSubmit} className="space-y-4">
                  <div>
-                    <label className="block text-sm font-medium mb-1">{t('quantity')}</label>
+                    <div className="flex justify-between items-center mb-1">
+                        <label className="block text-sm font-medium">{t('quantity')}</label>
+                        <button 
+                            type="button"
+                            onClick={() => {
+                                const asset = portfolioGroups.find(p => p.symbol === sellModalSymbol);
+                                if (asset) setSellQuantity(asset.quantity.toString());
+                            }}
+                            className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                        >
+                            {t('sellAll')}
+                        </button>
+                    </div>
                     <input 
                         type="number" 
                         required
@@ -1021,19 +1104,7 @@ export const Investments: React.FC<Props> = ({ investments, transactions, onSave
                  </div>
 
                  <div className="flex justify-end gap-3 pt-2">
-                    <button type="button" onClick={() => {
-                      setIsFormOpen(false);
-                      setFormData({
-                        type: 'BUY',
-                        assetType: AssetType.STOCK,
-                        currency: 'USD',
-                        date: new Date().toISOString().split('T')[0],
-                        symbol: '',
-                        name: '',
-                        quantity: 0,
-                        pricePerUnit: 0
-                      });
-                    }} className="px-4 py-2 text-gray-500">{t('cancel')}</button>
+                    <button type="button" onClick={() => setIsFormOpen(false)} className="px-4 py-2 text-gray-500">{t('cancel')}</button>
                     <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg">{t('save')}</button>
                  </div>
                </form>
@@ -1047,7 +1118,7 @@ export const Investments: React.FC<Props> = ({ investments, transactions, onSave
         <AssetGroup type={AssetType.CRYPTO} title={t('crypto')} assets={assetsByType[AssetType.CRYPTO]} />
         <AssetGroup type={AssetType.OTHER} title={t('other')} assets={assetsByType[AssetType.OTHER]} />
         
-        {portfolio.length === 0 && (
+        {portfolioGroups.length === 0 && (
             <div className="text-center py-20 text-gray-500">
                 <p>{t('noData')}</p>
             </div>

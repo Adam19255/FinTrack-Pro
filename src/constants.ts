@@ -137,6 +137,15 @@ export const TRANSLATIONS: Record<string, string> = {
   portfolio: 'תיק השקעות',
   addFunds: 'הפקד כספים',
   depositToInvestments: 'הפקדה לתיק ההשקעות',
+  investedVsWorth: 'הושקע לעומת שווי',
+  realizedPL: 'מומש (רווח/הפסד)',
+  realizedProfit: 'רווח שמומש',
+  realizedLoss: 'הפסד שמומש',
+  unrealizedPL: 'על הנייר',
+  costBasis: 'עלות השקעה',
+  currentWorth: 'שווי נוכחי',
+  netCashFlow: 'תזרים מזומנים נטו',
+  sellAll: 'הכל',
 };
 
 export const DEFAULT_CATEGORIES = {
