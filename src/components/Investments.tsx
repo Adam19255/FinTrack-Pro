@@ -6,6 +6,7 @@ import { fetchStockPrice, fetchExchangeRate, fetchStockCandles } from '../servic
 import { Plus, TrendingUp, TrendingDown, DollarSign, ChevronDown, ChevronUp, History, Edit2, Wallet, RefreshCw, Trash2, Settings, Key, LineChart as ChartIcon, Landmark } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { normalizeToISO, isoToDDMMYYYY, parseToDate, formatDateToDDMMYYYY } from '../utils/dateUtils';
 
 interface Props {
   investments: InvestmentTransaction[];
@@ -75,6 +76,14 @@ export const Investments: React.FC<Props> = ({ investments, transactions, onSave
       if (rate) setExchangeRate(rate);
     };
     loadRates();
+  }, []);
+
+  // Call refresh when navigating to this tab (component mount)
+  useEffect(() => {
+    if (apiKey) {
+      refreshPrices();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Update chart when time range or investments change
@@ -170,7 +179,7 @@ export const Investments: React.FC<Props> = ({ investments, transactions, onSave
           }
 
           // Calculate quantity held at this date
-          const txs = investments.filter(i => i.symbol === sym && new Date(i.date).getTime() <= date.getTime());
+              const txs = investments.filter(i => i.symbol === sym && parseToDate(i.date).getTime() <= date.getTime());
           const qty = txs.reduce((acc, curr) => curr.type === 'BUY' ? acc + curr.quantity : acc - curr.quantity, 0);
           
           if (qty > 0 && price > 0) {
@@ -180,7 +189,7 @@ export const Investments: React.FC<Props> = ({ investments, transactions, onSave
 
         // Calculate Invested Capital at this date (Cash Flow)
         // This is needed to calculate Return %
-        const historicTxs = investments.filter(i => new Date(i.date).getTime() <= date.getTime());
+          const historicTxs = investments.filter(i => parseToDate(i.date).getTime() <= date.getTime());
         historicTxs.forEach(tx => {
            const val = tx.quantity * tx.pricePerUnit * (tx.currency === 'ILS' ? (1/exchangeRate) : 1);
            if (tx.type === 'BUY') totalInvested += val;
@@ -251,7 +260,7 @@ export const Investments: React.FC<Props> = ({ investments, transactions, onSave
   const portfolio = useMemo(() => {
     const groups: Record<string, GroupedAsset> = {};
 
-    const sortedInvestments = [...investments].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    const sortedInvestments = [...investments].sort((a, b) => parseToDate(a.date).getTime() - parseToDate(b.date).getTime());
 
     sortedInvestments.forEach(tx => {
       if (!groups[tx.symbol]) {
@@ -320,7 +329,7 @@ export const Investments: React.FC<Props> = ({ investments, transactions, onSave
 
 
   const handleEditTransaction = (tx: InvestmentTransaction) => {
-    setFormData(tx);
+    setFormData({ ...tx, date: normalizeToISO(tx.date) });
     setIsFormOpen(true);
   };
 
@@ -335,7 +344,7 @@ export const Investments: React.FC<Props> = ({ investments, transactions, onSave
     if (fundsAmount && Number(fundsAmount) > 0) {
         onSaveTransaction({
             id: generateId(),
-            date: fundsDate,
+            date: isoToDDMMYYYY(fundsDate),
             amount: Number(fundsAmount),
             type: TransactionType.EXPENSE,
             category: 'השקעה',
@@ -360,7 +369,7 @@ export const Investments: React.FC<Props> = ({ investments, transactions, onSave
         quantity: Number(formData.quantity),
         pricePerUnit: Number(formData.pricePerUnit),
         currency: formData.currency || 'USD',
-        date: formData.date
+        date: isoToDDMMYYYY(formData.date as string)
       });
       setIsFormOpen(false);
       // Reset
@@ -391,7 +400,7 @@ export const Investments: React.FC<Props> = ({ investments, transactions, onSave
             quantity: Number(sellQuantity),
             pricePerUnit: Number(sellPrice),
             currency: displayCurrency, 
-            date: new Date().toISOString().split('T')[0]
+            date: formatDateToDDMMYYYY(new Date())
         });
         setSellModalSymbol(null);
         setSellQuantity('');
@@ -523,7 +532,7 @@ export const Investments: React.FC<Props> = ({ investments, transactions, onSave
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                                {asset.transactions.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(tx => (
+                                {asset.transactions.sort((a,b) => parseToDate(b.date).getTime() - parseToDate(a.date).getTime()).map(tx => (
                                     <tr key={tx.id}>
                                         <td className="px-3 py-2">{tx.date}</td>
                                         <td className="px-3 py-2">

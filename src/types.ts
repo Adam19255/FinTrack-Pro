@@ -44,7 +44,7 @@ export enum AssetType {
 
 export interface InvestmentTransaction {
   id: string;
-  date: string; // YYYY-MM-DD
+  date: string; // string in DD-MM-YYYY format
   type: 'BUY' | 'SELL';
   assetType: AssetType;
   symbol: string; // e.g., AAPL or "Main St Apt"
