@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Transaction, TransactionType, CategoryData } from '../types';
 import { TRANSLATIONS } from '../constants';
 import { Trash2, Edit2, Search, Download, Trash, XCircle, ArrowUp, ArrowDown } from 'lucide-react';
@@ -90,6 +90,18 @@ export const TransactionList: React.FC<Props> = ({ transactions, onSave, onDelet
 
       return true;
     });
+
+  // Calculate Totals for Filtered View
+  const totals = useMemo(() => {
+    return filteredTransactions.reduce((acc, curr) => {
+      if (curr.type === TransactionType.INCOME) {
+        acc.income += curr.amount;
+      } else {
+        acc.expense += curr.amount;
+      }
+      return acc;
+    }, { income: 0, expense: 0 });
+  }, [filteredTransactions]);
 
   // Sorting Logic applied after filtering
   const sortedTransactions = [...filteredTransactions].sort((a, b) => {
@@ -249,16 +261,29 @@ export const TransactionList: React.FC<Props> = ({ transactions, onSave, onDelet
             </div>
           </div>
           
-          <div className="flex items-center gap-3">
-            <button 
-              onClick={resetFilters} 
-              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
-            >
-              <XCircle size={16} /> {t('resetFilters')}
-            </button>
-            <span className="text-xs text-gray-400 flex-1 text-left rtl:text-right px-2">
-              {filteredTransactions.length} {t('transactions')}
-            </span>
+          <div className="flex items-center justify-between gap-3 mt-4">
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={resetFilters} 
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+              >
+                <XCircle size={16} /> {t('resetFilters')}
+              </button>
+               <span className="text-xs text-gray-400 px-2">
+                {filteredTransactions.length} {t('transactions')}
+              </span>
+            </div>
+            {/* Filtered Totals */}
+            <div className="flex items-center gap-4 text-sm font-medium">
+               <div className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 rounded-lg">
+                  <span className="text-xs text-green-600/70 dark:text-green-400/70">{t('totalIncome')}:</span>
+                  <span style={{direction: "ltr"}}>+ {totals.income.toLocaleString()} ₪</span>
+               </div>
+               <div className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 rounded-lg">
+                  <span className="text-xs text-red-600/70 dark:text-red-400/70">{t('totalExpenses')}:</span>
+                  <span style={{direction: "ltr"}}>- {totals.expense.toLocaleString()} ₪</span>
+               </div>
+            </div>
           </div>
         </div>
 

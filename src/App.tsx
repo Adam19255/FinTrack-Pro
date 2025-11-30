@@ -6,11 +6,13 @@ import { TransactionList } from './components/TransactionList';
 import { RecurringSettings } from './components/RecurringSettings';
 import { Insights } from './components/Insights';
 import { CategoryManager } from './components/CategoryManager';
-import { Transaction, RecurringConfig, CategoryData, Theme } from './types';
+import { Investments } from './components/Investments';
+import { Transaction, RecurringConfig, CategoryData, Theme, InvestmentTransaction } from './types';
 import { 
   getTransactions, saveTransactions, 
   getRecurringConfigs, saveRecurringConfigs, 
   getCategories, saveCategories,
+  getInvestments, saveInvestments,
   processRecurringTransactions, clearAllData
 } from './services/storageService';
 import { TRANSLATIONS, DEFAULT_CATEGORIES } from './constants';
@@ -21,6 +23,7 @@ const AppContent: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [recurring, setRecurring] = useState<RecurringConfig[]>([]);
   const [categories, setCategories] = useState<CategoryData>({ income: [], expense: [] });
+  const [investments, setInvestments] = useState<InvestmentTransaction[]>([]);
   const [theme, setTheme] = useState<Theme>('light');
   const [loading, setLoading] = useState(true);
   const { showToast } = useToast();
@@ -33,6 +36,7 @@ const AppContent: React.FC = () => {
         const loadedTransactions = await getTransactions();
         const loadedRecurring = await getRecurringConfigs();
         const loadedCategories = await getCategories();
+        const loadedInvestments = await getInvestments();
         
         const { updatedTransactions, updatedRecurring, addedCount } = processRecurringTransactions(
           loadedTransactions,
@@ -47,6 +51,7 @@ const AppContent: React.FC = () => {
         setTransactions(updatedTransactions);
         setRecurring(updatedRecurring);
         setCategories(loadedCategories);
+        setInvestments(loadedInvestments);
       } catch (error) {
         console.error("Failed to load data", error);
         setCategories({
@@ -116,10 +121,32 @@ const AppContent: React.FC = () => {
     showToast(t('actionSuccess'), 'success');
   };
 
+  const handleSaveInvestment = async (inv: InvestmentTransaction) => {
+    const exists = investments.some(i => i.id === inv.id);
+    let newInvestments;
+    
+    if (exists) {
+        newInvestments = investments.map(i => i.id === inv.id ? inv : i);
+    } else {
+        newInvestments = [...investments, inv];
+    }
+    
+    setInvestments(newInvestments);
+    await saveInvestments(newInvestments);
+  };
+
+  const handleDeleteInvestment = async (id: string) => {
+    const newInvestments = investments.filter(i => i.id !== id);
+    setInvestments(newInvestments);
+    await saveInvestments(newInvestments);
+    showToast(t('actionSuccess'), 'success');
+  };
+
   const handleClearAll = async () => {
     await clearAllData();
     setTransactions([]);
     setRecurring([]);
+    setInvestments([]);
     const defaults = {
         income: [...DEFAULT_CATEGORIES.INCOME],
         expense: [...DEFAULT_CATEGORIES.EXPENSE]
@@ -170,6 +197,15 @@ const AppContent: React.FC = () => {
                categories={categories}
                onUpdate={handleUpdateCategories}
              />
+          } />
+          <Route path="/investments" element={
+            <Investments 
+              investments={investments}
+              transactions={transactions}
+              onSave={handleSaveInvestment}
+              onDelete={handleDeleteInvestment}
+              onSaveTransaction={handleSaveTransaction}
+            />
           } />
           <Route path="/insights" element={<Insights transactions={transactions} />} />
           <Route path="*" element={<Navigate to="/" replace />} />

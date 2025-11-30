@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LayoutDashboard, Receipt, Repeat, Sparkles, Moon, Sun, Menu, X, Tags } from 'lucide-react';
+import { LayoutDashboard, Receipt, Repeat, Sparkles, Moon, Sun, Menu, X, Tags, TrendingUp } from 'lucide-react';
 import { Theme } from '../types';
 import { TRANSLATIONS } from '../constants';
 import { Link, useLocation } from 'react-router-dom';
@@ -21,6 +21,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, theme, toggleTheme }) 
   const navItems = [
     { path: '/', icon: LayoutDashboard, label: t('dashboard') },
     { path: '/transactions', icon: Receipt, label: t('transactions') },
+    { path: '/investments', icon: TrendingUp, label: t('investments') },
     { path: '/recurring', icon: Repeat, label: t('recurring') },
     { path: '/categories', icon: Tags, label: t('categories') },
     { path: '/insights', icon: Sparkles, label: t('insights') },

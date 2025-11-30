@@ -34,6 +34,27 @@ export interface CategoryData {
   expense: string[];
 }
 
+// Investment Types
+export enum AssetType {
+  STOCK = 'STOCK',
+  REAL_ESTATE = 'REAL_ESTATE',
+  CRYPTO = 'CRYPTO',
+  OTHER = 'OTHER'
+}
+
+export interface InvestmentTransaction {
+  id: string;
+  date: string; // YYYY-MM-DD
+  type: 'BUY' | 'SELL';
+  assetType: AssetType;
+  symbol: string; // e.g., AAPL or "Main St Apt"
+  name?: string;
+  quantity: number;
+  pricePerUnit: number; // Price per share
+  currency: 'USD' | 'ILS'; // Original currency
+  fees?: number;
+}
+
 export interface AppState {
   transactions: Transaction[];
   recurring: RecurringConfig[];

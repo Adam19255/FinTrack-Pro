@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { CategoryData, TransactionType } from '../types';
 import { TRANSLATIONS } from '../constants';
-import { Plus, Tag, X } from 'lucide-react';
+import { Trash2, Plus, Tag, X, GripVertical } from 'lucide-react';
 
 interface Props {
   categories: CategoryData;
@@ -13,6 +13,9 @@ export const CategoryManager: React.FC<Props> = ({ categories, onUpdate }) => {
   const [newCategory, setNewCategory] = useState('');
   const [activeTab, setActiveTab] = useState<TransactionType>(TransactionType.EXPENSE);
   const [error, setError] = useState('');
+  
+  // Drag and Drop state
+  const [draggedItemIndex, setDraggedItemIndex] = useState<number | null>(null);
 
   const currentList = activeTab === TransactionType.INCOME ? categories.income : categories.expense;
 
@@ -43,6 +46,33 @@ export const CategoryManager: React.FC<Props> = ({ categories, onUpdate }) => {
       [activeTab === TransactionType.INCOME ? 'income' : 'expense']: updatedList
     };
     onUpdate(updatedCategories);
+  };
+
+  // Drag Handlers
+  const handleDragStart = (index: number) => {
+    setDraggedItemIndex(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (draggedItemIndex === null || draggedItemIndex === index) return;
+
+    // Reorder list
+    const updatedList = [...currentList];
+    const item = updatedList.splice(draggedItemIndex, 1)[0];
+    updatedList.splice(index, 0, item);
+
+    // Optimistic update for UI smoothness (optional, or wait for drop)
+    const updatedCategories = {
+      ...categories,
+      [activeTab === TransactionType.INCOME ? 'income' : 'expense']: updatedList
+    };
+    onUpdate(updatedCategories);
+    setDraggedItemIndex(index);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedItemIndex(null);
   };
 
   return (
@@ -97,22 +127,34 @@ export const CategoryManager: React.FC<Props> = ({ categories, onUpdate }) => {
           {t('add')}
         </button>
       </form>
+      
+      <p className="text-xs text-gray-400 mb-2">{t('dragToReorder')}</p>
 
-      {/* List */}
-      <div className="flex flex-wrap gap-3">
-        {currentList.map((cat) => (
-          <div key={cat} className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 dark:bg-gray-700 rounded-full border border-gray-100 dark:border-gray-600">
-            <span className="text-sm font-medium">{cat}</span>
+      {/* List with Drag and Drop */}
+      <div className="flex flex-col gap-2">
+        {currentList.map((cat, index) => (
+          <div 
+            key={cat} 
+            draggable
+            onDragStart={() => handleDragStart(index)}
+            onDragOver={(e) => handleDragOver(e, index)}
+            onDragEnd={handleDragEnd}
+            className={`flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-700 rounded-xl border border-gray-100 dark:border-gray-600 cursor-move transition-all ${draggedItemIndex === index ? 'opacity-50 border-blue-400 border-dashed' : ''}`}
+          >
+            <div className="flex items-center gap-3">
+              <GripVertical size={16} className="text-gray-400" />
+              <span className="font-medium">{cat}</span>
+            </div>
             <button
               onClick={() => handleDelete(cat)}
-              className="p-0.5 text-gray-400 hover:text-red-500 transition-colors rounded-full hover:bg-gray-200 dark:hover:bg-gray-600"
+              className="p-1.5 text-gray-400 hover:text-red-500 transition-colors rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600"
             >
-              <X size={14} />
+              <Trash2 size={16} />
             </button>
           </div>
         ))}
         {currentList.length === 0 && (
-          <p className="text-gray-500 italic text-sm">{t('noData')}</p>
+          <p className="text-gray-500 italic text-sm text-center py-4">{t('noData')}</p>
         )}
       </div>
     </div>

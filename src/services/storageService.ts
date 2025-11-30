@@ -1,10 +1,11 @@
-import { Transaction, RecurringConfig, CategoryData } from '../types';
+import { Transaction, RecurringConfig, CategoryData, InvestmentTransaction } from '../types';
 import { DEFAULT_CATEGORIES, TRANSLATIONS } from '../constants';
 import { formatDateToDDMMYYYY, parseToDate } from '../utils/dateUtils';
 
 const STORAGE_KEY_TRANSACTIONS = 'fintrack_transactions';
 const STORAGE_KEY_RECURRING = 'fintrack_recurring';
 const STORAGE_KEY_CATEGORIES = 'fintrack_categories';
+const STORAGE_KEY_INVESTMENTS = 'fintrack_investments';
 
 // Helper to check environment
 const isElectron = () => !!window.electronAPI;
@@ -47,6 +48,25 @@ export const saveRecurringConfigs = async (configs: RecurringConfig[]) => {
   }
 };
 
+// Investments
+export const getInvestments = async (): Promise<InvestmentTransaction[]> => {
+  if (isElectron()) {
+    const data = await window.electronAPI!.getData(STORAGE_KEY_INVESTMENTS);
+    return data || [];
+  } else {
+    const data = localStorage.getItem(STORAGE_KEY_INVESTMENTS);
+    return data ? JSON.parse(data) : [];
+  }
+};
+
+export const saveInvestments = async (investments: InvestmentTransaction[]) => {
+  if (isElectron()) {
+    await window.electronAPI!.saveData(STORAGE_KEY_INVESTMENTS, investments);
+  } else {
+    localStorage.setItem(STORAGE_KEY_INVESTMENTS, JSON.stringify(investments));
+  }
+};
+
 // Categories
 export const getCategories = async (): Promise<CategoryData> => {
   let data: CategoryData | null = null;
@@ -80,11 +100,13 @@ export const clearAllData = async () => {
   if (isElectron()) {
     await window.electronAPI!.saveData(STORAGE_KEY_TRANSACTIONS, []);
     await window.electronAPI!.saveData(STORAGE_KEY_RECURRING, []);
+    await window.electronAPI!.saveData(STORAGE_KEY_INVESTMENTS, []);
     // We optionally keep categories, but let's reset them too if "All" implies factory reset
     await window.electronAPI!.saveData(STORAGE_KEY_CATEGORIES, null); 
   } else {
     localStorage.removeItem(STORAGE_KEY_TRANSACTIONS);
     localStorage.removeItem(STORAGE_KEY_RECURRING);
+    localStorage.removeItem(STORAGE_KEY_INVESTMENTS);
     localStorage.removeItem(STORAGE_KEY_CATEGORIES);
   }
 };
